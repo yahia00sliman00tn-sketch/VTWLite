@@ -26,8 +26,8 @@ class VideoWallpaperService : WallpaperService() {
     inner class VideoEngine : Engine() {
 
         private var player: MediaPlayer? = null
-        private var isReady = false
-        private var duration = 0
+        private var playerReady = false
+        private var playerDuration = 0
         private var isLocked = true
         private var surface: SurfaceHolder? = null
         private val handler = Handler(Looper.getMainLooper())
@@ -35,9 +35,9 @@ class VideoWallpaperService : WallpaperService() {
         private val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 when (intent.action) {
-                    Intent.ACTION_SCREEN_OFF   -> onScreenOff()
-                    Intent.ACTION_SCREEN_ON    -> onScreenOn()
-                    ACTION_RELOAD              -> reload()
+                    Intent.ACTION_SCREEN_OFF -> onScreenOff()
+                    Intent.ACTION_SCREEN_ON  -> onScreenOn()
+                    ACTION_RELOAD            -> reload()
                 }
             }
         }
@@ -81,10 +81,9 @@ class VideoWallpaperService : WallpaperService() {
         private fun onScreenOff() {
             isLocked = true
             handler.removeCallbacksAndMessages(null)
-            // أعد للفريم الأول
             handler.post {
                 try {
-                    if (isReady) {
+                    if (playerReady) {
                         player?.pause()
                         player?.seekTo(0, MediaPlayer.SEEK_CLOSEST)
                     }
@@ -93,22 +92,20 @@ class VideoWallpaperService : WallpaperService() {
         }
 
         private fun onScreenOn() {
-            // يشتغل فور إضاءة الشاشة — في Lock Screen
-            if (isLocked) {
-                isLocked = false
-                handler.post {
-                    try {
-                        if (!isReady) return@post
-                        player?.seekTo(0, MediaPlayer.SEEK_CLOSEST)
-                        player?.start()
-                        val stop = (duration - 100).coerceAtLeast(0).toLong()
-                        handler.postDelayed({
-                            try {
-                                if (player?.isPlaying == true) player?.pause()
-                            } catch (e: Exception) {}
-                        }, stop)
-                    } catch (e: Exception) {}
-                }
+            if (!isLocked) return
+            isLocked = false
+            handler.post {
+                try {
+                    if (!playerReady) return@post
+                    player?.seekTo(0, MediaPlayer.SEEK_CLOSEST)
+                    player?.start()
+                    val stop = (playerDuration - 100).coerceAtLeast(0).toLong()
+                    handler.postDelayed({
+                        try {
+                            if (player?.isPlaying == true) player?.pause()
+                        } catch (e: Exception) {}
+                    }, stop)
+                } catch (e: Exception) {}
             }
         }
 
@@ -117,27 +114,28 @@ class VideoWallpaperService : WallpaperService() {
             val uri = prefs.getString(KEY_VIDEO, null)?.let { Uri.parse(it) } ?: return
             releasePlayer()
             try {
-                player = MediaPlayer().apply {
-                    setSurface(holder.surface)
-                    setDataSource(applicationContext, uri)
-                    isLooping = false
-                    setOnPreparedListener { mp ->
-                        duration = mp.duration
-                        isReady = true
-                        // اعرض الفريم الأول
-                        mp.seekTo(0, MediaPlayer.SEEK_CLOSEST)
-                        mp.start()
-                        handler.postDelayed({ mp.pause() }, 80)
-                    }
-                    setOnCompletionListener { mp ->
-                        mp.pause()
-                    }
-                    setOnErrorListener { _, _, _ ->
-                        isReady = false
-                        false
-                    }
-                    prepareAsync()
+                val p = MediaPlayer()
+                p.setSurface(holder.surface)
+                p.setDataSource(applicationContext, uri)
+                p.isLooping = false
+                p.setOnPreparedListener { mp ->
+                    playerDuration = mp.duration
+                    playerReady = true
+                    mp.seekTo(0, MediaPlayer.SEEK_CLOSEST)
+                    mp.start()
+                    handler.postDelayed({ 
+                        try { mp.pause() } catch (e: Exception) {}
+                    }, 80)
                 }
+                p.setOnCompletionListener { mp ->
+                    try { mp.pause() } catch (e: Exception) {}
+                }
+                p.setOnErrorListener { _, _, _ ->
+                    playerReady = false
+                    false
+                }
+                p.prepareAsync()
+                player = p
             } catch (e: Exception) {}
         }
 
@@ -153,8 +151,8 @@ class VideoWallpaperService : WallpaperService() {
                 player?.release()
             } catch (e: Exception) {}
             player = null
-            isReady = false
-            duration = 0
+            playerReady = false
+            playerDuration = 0
         }
     }
 }
