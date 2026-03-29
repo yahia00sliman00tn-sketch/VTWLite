@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">VTW Lite</string>
+    <string name="wallpaper_description">انتقال فيديو عند فتح الهاتف</string>
+    <string name="choose_video">اختر فيديو</string>
+    <string name="set_wallpaper">تفعيل كخلفية</string>
+    <string name="no_video">لم يتم اختيار فيديو</string>
+    <string name="video_selected">تم الاختيار ✓</string>
+    <string name="reset">إعادة تعيين</string>
+    <string name="reset_title">إعادة تعيين</string>
+    <string name="reset_message">هل تريد إعادة التعيين؟</string>
+    <string name="reset_done">تمت الإعادة ✓</string>
+    <string name="yes">نعم</string>
+    <string name="cancel">إلغاء</string>
+</resources>
